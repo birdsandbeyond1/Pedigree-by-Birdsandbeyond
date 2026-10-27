@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pigeonigree - Racing Pigeon Pedigree & Loft Manager</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f4f8',
+              100: '#d9e2ec',
+              500: '#102a43',
+              600: '#081c24',
+              700: '#051118',
+              gold: '#d4af37',
+              emerald: '#10b981',
+              sire: '#2563eb',
+              dam: '#ec4899',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+
+    /* Print Styles for A4 Landscape Pedigree Export */
+    @media print {
+      @page {
+        size: A4 landscape;
+        margin: 5mm;
+      }
+      body {
+        background: #ffffff !important;
+        color: #000000 !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .print-area {
+        width: 100% !important;
+        max-width: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        background: white !important;
+      }
+      .pedigree-tree {
+        gap: 4px !important;
+      }
+      .bird-card {
+        border-width: 1px !important;
+        padding: 3px !important;
+        font-size: 8px !important;
+        box-shadow: none !important;
+        background: #ffffff !important;
+      }
+      .bird-card * {
+        font-size: 8px !important;
+        line-height: 1.1 !important;
+      }
+      .bird-card img {
+        width: 32px !important;
+        height: 32px !important;
+      }
+      .sire-border {
+        border-color: #2563eb !important;
+        background-color: #f0f7ff !important;
+      }
+      .dam-border {
+        border-color: #ec4899 !important;
+        background-color: #fdf2f8 !important;
+      }
+    }
+
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0,0,0,0.05);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(100,116,139,0.4);
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col antialiased">
+
+  <!-- Main Container -->
+  <div class="flex-1 flex flex-col md:flex-row h-screen overflow-hidden">
+
+    <!-- Sidebar Navigation (No Print) -->
+    <aside class="no-print w-full md:w-64 bg-slate-950 border-r border-slate-800 flex flex-col shrink-0">
+      <!-- Logo Header -->
+      <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+          <div class="bg-gradient-to-tr from-amber-500 to-amber-300 p-2 rounded-xl text-slate-950 font-black text-xl shadow-lg shadow-amber-500/20">
+            <i class="fa-solid fa-dove"></i>
+          </div>
+          <div>
+            <h1 class="font-bold text-lg leading-none tracking-wide text-white">Pigeonigree</h1>
+            <span class="text-[10px] text-amber-400 font-semibold uppercase tracking-wider">Pro Loft System</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation Links -->
+      <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
+        <button onclick="switchTab('builder')" id="nav-builder" class="nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20 transition">
+          <i class="fa-solid fa-sitemap w-5 text-center"></i>
+          <span>Pedigree Builder</span>
+        </button>
+        <button onclick="switchTab('database')" id="nav-database" class="nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 transition">
+          <i class="fa-solid fa-book-bookmark w-5 text-center"></i>
+          <span>Loft Birds DB</span>
+        </button>
+        <button onclick="switchTab('branding')" id="nav-branding" class="nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 transition">
+          <i class="fa-solid fa-id-card w-5 text-center"></i>
+          <span>Loft Branding</span>
+        </button>
+      </nav>
+
+      <!-- Quick Actions / Quick Sample Loader -->
+      <div class="p-3 border-t border-slate-800 space-y-2">
+        <button onclick="loadSamplePedigree()" class="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-medium text-xs py-2 px-3 rounded-lg shadow transition">
+          <i class="fa-solid fa-wand-magic-sparkles"></i>
+          <span>Load Champion Sample</span>
+        </button>
+        <button onclick="window.print()" class="w-full flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs py-2 px-3 rounded-lg shadow transition">
+          <i class="fa-solid fa-print"></i>
+          <span>Print / Export PDF</span>
+        </button>
+      </div>
+
+      <!-- User/Version Info -->
+      <div class="p-3 bg-slate-900/50 border-t border-slate-800/80 text-xs text-slate-500 flex justify-between items-center">
+        <span>Status: <span class="text-emerald-400 font-medium">Ready</span></span>
+        <span>v2.4 Pro</span>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 overflow-y-auto bg-slate-900 flex flex-col relative">
+
+      <!-- Top Utility Header (No Print) -->
+      <header class="no-print bg-slate-950/70 backdrop-blur border-b border-slate-800 p-3 px-6 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-20">
+        <div class="flex items-center space-x-3">
+          <h2 id="page-title" class="text-base font-semibold text-slate-200">Interactive 4-Gen Pedigree Builder</h2>
+          <span class="bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs px-2 py-0.5 rounded-full font-mono">Dynamic Preview</span>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button onclick="saveCurrentPedigreeToDB()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium px-3 py-1.5 rounded-md border border-slate-700 flex items-center space-x-1.5 transition">
+            <i class="fa-solid fa-floppy-disk text-amber-400"></i>
+            <span>Save Pedigree to DB</span>
+          </button>
+          <button onclick="createNewPedigree()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium px-3 py-1.5 rounded-md border border-slate-700 flex items-center space-x-1.5 transition">
+            <i class="fa-solid fa-plus text-emerald-400"></i>
+            <span>New Tree</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- TAB 1: PEDIGREE TREE BUILDER -->
+      <section id="tab-builder" class="p-4 md:p-6 flex-1 flex flex-col items-center">
+        <!-- Paper Canvas Container -->
+        <div id="pedigree-paper" class="print-area bg-slate-950 text-slate-100 rounded-xl border border-slate-800 shadow-2xl p-4 md:p-6 w-full max-w-[1300px] flex flex-col space-y-4 my-auto">
+          
+          <!-- Loft Branding Header Banner -->
+          <div class="border-b-2 border-amber-500/40 pb-4 flex flex-row items-center justify-between gap-4">
+            <div class="flex items-center space-x-4">
+              <img id="display-loft-logo" src="https://placehold.co/100x100/1e293b/d4af37?text=LOFT+LOGO" alt="Loft Logo" class="w-16 h-16 md:w-20 md:h-20 object-cover rounded-lg border border-slate-700 shadow-md">
+              <div>
+                <h1 id="display-loft-name" class="text-xl md:text-2xl font-bold text-amber-400 tracking-tight">ROYAL RACING LOFT</h1>
+                <p id="display-breeder-name" class="text-xs md:text-sm text-slate-300 font-medium">Bred & Owned by: Master Breeder</p>
+                <p id="display-loft-contact" class="text-[11px] md:text-xs text-slate-400 mt-0.5">Phone: +1 555 01928 | Email: loft@pigeon pedigree.com | City, Country</p>
+              </div>
+            </div>
+            <div class="text-right flex flex-col justify-center items-end border-l border-slate-800 pl-4">
+              <span class="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Official Pedigree Certificate</span>
+              <span id="display-pedigree-id" class="text-xs md:text-sm font-mono font-bold text-amber-400 mt-1">ID: PED-2026-8892</span>
+              <span id="display-issue-date" class="text-[11px] text-slate-400 mt-0.5">Date: Oct 27, 2026</span>
+            </div>
+          </div>
+
+          <!-- Pedigree Tree Layout (4 Generations Grid) -->
+          <div class="pedigree-tree grid grid-cols-4 gap-2 md:gap-3 flex-1">
+            
+            <!-- COL 1: Gen 0 - Subject Main Bird (Spans all rows) -->
+            <div class="col-span-1 flex flex-col justify-center">
+              <div class="text-[10px] font-bold text-amber-400 uppercase tracking-wider mb-1 px-1 flex items-center justify-between">
+                <span>Subject / Main Bird</span>
+                <span class="text-[9px] text-slate-400">Gen 0</span>
+              </div>
+              <div id="card-gen0-1" onclick="openEditModal('gen0-1')" class="bird-card cursor-pointer bg-slate-900 hover:bg-slate-850 border-2 border-amber-500/60 rounded-lg p-2.5 shadow-lg transition relative flex flex-col justify-between space-y-2 group">
+                <!-- Content injected dynamically -->
+              </div>
+            </div>
+
+            <!-- COL 2: Gen 1 - Parents (Sire & Dam) -->
+            <div class="col-span-1 flex flex-col justify-around space-y-2">
+              <!-- Sire -->
+              <div class="flex-1 flex flex-col justify-center">
+                <div class="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-1 px-1">Sire (Father)</div>
+                <div id="card-gen1-1" onclick="openEditModal('gen1-1')" class="bird-card sire-border cursor-pointer bg-slate-900/90 hover:bg-slate-850 border-2 border-blue-500/50 rounded-lg p-2 shadow transition flex flex-col justify-between space-y-1 h-full">
+                </div>
+              </div>
+              <!-- Dam -->
+              <div class="flex-1 flex flex-col justify-center">
+                <div class="text-[10px] font-bold text-pink-400 uppercase tracking-wider mb-1 px-1">Dam (Mother)</div>
+                <div id="card-gen1-2" onclick="openEditModal('gen1-2')" class="bird-card dam-border cursor-pointer bg-slate-900/90 hover:bg-slate-850 border-2 border-pink-500/50 rounded-lg p-2 shadow transition flex flex-col justify-between space-y-1 h-full">
+                </div>
+              </div>
+            </div>
+
+            <!-- COL 3: Gen 2 - Grandparents (4 Birds) -->
+            <div class="col-span-1 flex flex-col justify-between space-y-1.5">
+              <!-- Sire's Sire -->
+              <div id="card-gen2-1" onclick="openEditModal('gen2-1')" class="bird-card sire-border cursor-pointer bg-slate-900/80 border border-blue-500/40 rounded-lg p-1.5 shadow transition h-full flex flex-col justify-between"></div>
+              <!-- Sire's Dam -->
+              <div id="card-gen2-2" onclick="openEditModal('gen2-2')" class="bird-card dam-border cursor-pointer bg-slate-900/80 border border-pink-500/40 rounded-lg p-1.5 shadow transition h-full flex flex-col justify-between"></div>
+              <!-- Dam's Sire -->
+              <div id="card-gen2-3" onclick="openEditModal('gen2-3')" class="bird-card sire-border cursor-pointer bg-slate-900/80 border border-blue-500/40 rounded-lg p-1.5 shadow transition h-full flex flex-col justify-between"></div>
+              <!-- Dam's Dam -->
+              <div id="card-gen2-4" onclick="openEditModal('gen2-4')" class="bird-card dam-border cursor-pointer bg-slate-900/80 border border-pink-500/40 rounded-lg p-1.5 shadow transition h-full flex flex-col justify-between"></div>
+            </div>
+
+            <!-- COL 4: Gen 3 - Great-Grandparents (8 Birds) -->
+            <div class="col-span-1 flex flex-col justify-between space-y-1">
+              <div id="card-gen3-1" onclick="openEditModal('gen3-1')" class="bird-card sire-border cursor-pointer bg-slate-900/70 border border-blue-500/30 rounded p-1 text-[10px] h-full flex flex-col justify-between"></div>
+              <div id="card-gen3-2" onclick="openEditModal('gen3-2')" class="bird-card dam-border cursor-pointer bg-slate-900/70 border border-pink-500/30 rounded p-1 text-[10px] h-full flex flex-col justify-between"></div>
+              <div id="card-gen3-3" onclick="openEditModal('gen3-3')" class="bird-card sire-border cursor-pointer bg-slate-900/70 border border-blue-500/30 rounded p-1 text-[10px] h-full flex flex-col justify-between"></div>
+              <div id="card-gen3-4" onclick="openEditModal('gen3-4')" class="bird-card dam-border cursor-pointer bg-slate-900/70 border border-pink-500/30 rounded p-1 text-[10px] h-full flex flex-col justify-between"></div>
+              <div id="card-gen3-5" onclick="openEditModal('gen3-5')" class="bird-card sire-border cursor-pointer bg-slate-900/70 border border-blue-500/30 rounded p-1 text-[10px] h-full flex flex-col justify-between"></div>
+              <div id="card-gen3-6" onclick="openEditModal('gen3-6')" class="bird-card dam-border cursor-pointer bg-slate-900/70 border border-pink-500/30 rounded p-1 text-[10px] h-full flex flex-col justify-between"></div>
+              <div id="card-gen3-7" onclick="openEditModal('gen3-7')" class="bird-card sire-border cursor-pointer bg-slate-900/70 border border-blue-500/30 rounded p-1 text-[10px] h-full flex flex-col justify-between"></div>
+              <div id="card-gen3-8" onclick="openEditModal('gen3-8')" class="bird-card dam-border cursor-pointer bg-slate-900/70 border border-pink-500/30 rounded p-1 text-[10px] h-full flex flex-col justify-between"></div>
+            </div>
+
+          </div>
+
+          <!-- Footer Certificate Sign-off -->
+          <div class="border-t border-slate-800 pt-3 flex items-center justify-between text-[11px] text-slate-400">
+            <div>
+              <span>Certified Accurate Lineage</span> &bull; 
+              <span class="text-amber-400 font-medium">DNA Tested Line</span>
+            </div>
+            <div class="italic">
+              Generated via Pigeonigree Pro Loft Management System
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- TAB 2: LOFT BIRDS DATABASE -->
+      <section id="tab-database" class="p-6 hidden flex-1 flex-col space-y-4">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-950 p-4 rounded-xl border border-slate-800">
+          <div>
+            <h3 class="text-lg font-bold text-white">Loft Birds Master Database</h3>
+            <p class="text-xs text-slate-400">Manage saved pigeons in your loft for quick pedigree auto-fill.</p>
+          </div>
+          <div class="flex space-x-2">
+            <div class="relative">
+              <input type="text" id="db-search" oninput="renderDatabaseTable()" placeholder="Search Ring #, Name..." class="bg-slate-900 text-xs px-3 py-2 pl-8 rounded-lg border border-slate-700 focus:outline-none focus:border-amber-400 text-slate-200 w-48 md:w-64">
+              <i class="fa-solid fa-search absolute left-2.5 top-2.5 text-slate-500 text-xs"></i>
+            </div>
+            <button onclick="openNewBirdDBModal()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold px-3 py-2 rounded-lg flex items-center space-x-1 transition">
+              <i class="fa-solid fa-plus"></i>
+              <span>Add New Bird</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="bg-slate-950 rounded-xl border border-slate-800 overflow-x-auto">
+          <table class="w-full text-left text-xs text-slate-300">
+            <thead class="bg-slate-900 border-b border-slate-800 text-slate-400 uppercase font-semibold">
+              <tr>
+                <th class="p-3">Ring / Band ID</th>
+                <th class="p-3">Name</th>
+                <th class="p-3">Sex</th>
+                <th class="p-3">Year</th>
+                <th class="p-3">Color</th>
+                <th class="p-3">Strain</th>
+                <th class="p-3">Performance Highlights</th>
+                <th class="p-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="db-table-body" class="divide-y divide-slate-800">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- TAB 3: LOFT BRANDING & SETTINGS -->
+      <section id="tab-branding" class="p-6 hidden flex-1 max-w-3xl mx-auto w-full">
+        <div class="bg-slate-950 p-6 rounded-xl border border-slate-800 space-y-6">
+          <div class="border-b border-slate-800 pb-3">
+            <h3 class="text-lg font-bold text-white">Loft Branding & Certificate Setup</h3>
+            <p class="text-xs text-slate-400">Configure your loft credentials to customize header banners on exported pedigrees.</p>
+          </div>
+
+          <form id="branding-form" onsubmit="saveBranding(event)" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-medium text-slate-400 mb-1">Loft / Breeding Station Name</label>
+                <input type="text" id="brand-loft-name" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:border-amber-400 focus:outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-400 mb-1">Breeder Full Name</label>
+                <input type="text" id="brand-breeder-name" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:border-amber-400 focus:outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-400 mb-1">Contact Phone</label>
+                <input type="text" id="brand-phone" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:border-amber-400 focus:outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-400 mb-1">Email Address</label>
+                <input type="email" id="brand-email" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:border-amber-400 focus:outline-none">
+              </div>
+              <div class="md:col-span-2">
+                <label class="block text-xs font-medium text-slate-400 mb-1">Loft Location / Address</label>
+                <input type="text" id="brand-location" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:border-amber-400 focus:outline-none">
+              </div>
+              <div class="md:col-span-2">
+                <label class="block text-xs font-medium text-slate-400 mb-1">Loft Logo Image URL</label>
+                <input type="url" id="brand-logo-url" placeholder="https://example.com/logo.png" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:border-amber-400 focus:outline-none">
+              </div>
+            </div>
+
+            <div class="pt-4 border-t border-slate-800 flex justify-end">
+              <button type="submit" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs px-5 py-2.5 rounded-lg shadow transition flex items-center space-x-2">
+                <i class="fa-solid fa-check"></i>
+                <span>Save Loft Profile</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- BIRD EDITOR MODAL (NO PRINT) -->
+  <div id="bird-modal" class="no-print fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden">
+      <!-- Modal Header -->
+      <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950">
+        <h3 id="modal-title" class="font-bold text-amber-400 text-sm">Edit Pigeon Details</h3>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-white p-1 text-sm"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <!-- Quick Auto-Fill from Database Section -->
+      <div class="p-3 bg-slate-950/60 border-b border-slate-800 flex items-center justify-between">
+        <span class="text-xs text-slate-400">Quick Auto-fill from Loft DB:</span>
+        <select id="db-autofill-select" onchange="autoFillFromDB(this.value)" class="bg-slate-900 text-xs border border-slate-700 rounded px-2 py-1 text-slate-200 focus:outline-none focus:border-amber-400 max-w-[200px]">
+          <option value="">-- Select Saved Bird --</option>
+        </select>
+      </div>
+
+      <!-- Modal Body Form -->
+      <form id="bird-form" onsubmit="saveModalBird(event)" class="p-4 space-y-3 overflow-y-auto flex-1 text-xs">
+        <input type="hidden" id="modal-slot-id">
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-400 mb-1">Ring Number / Band ID *</label>
+            <input type="text" id="modal-ring" required placeholder="e.g., BELG-2023-601234" class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white focus:border-amber-400 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Name / Alias</label>
+            <input type="text" id="modal-name" placeholder="e.g., Blue Champion" class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white focus:border-amber-400 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Sex</label>
+            <select id="modal-sex" class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white focus:border-amber-400 focus:outline-none">
+              <option value="Sire">Cock (Sire)</option>
+              <option value="Dam">Hen (Dam)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Hatch Year</label>
+            <input type="number" id="modal-year" placeholder="2023" class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white focus:border-amber-400 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Color / Pattern</label>
+            <input type="text" id="modal-color" placeholder="Blue Bar, Blue Cheq..." class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white focus:border-amber-400 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Strain / Lineage</label>
+            <input type="text" id="modal-strain" placeholder="Janssen / De Rauw-Sablon" class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white focus:border-amber-400 focus:outline-none">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-slate-400 mb-1">Eye Color / DNA Info</label>
+          <input type="text" id="modal-eye" placeholder="Yellow Pearl / DNA Certified" class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white focus:border-amber-400 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-slate-400 mb-1">Photo Image URL</label>
+          <input type="url" id="modal-photo" placeholder="https://example.com/pigeon.jpg" class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white focus:border-amber-400 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-slate-400 mb-1">Race Results & Key Performance Summary</label>
+          <textarea id="modal-performance" rows="3" placeholder="1st Nat. Bourges 12,400p, 3rd Provincial Ace..." class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white focus:border-amber-400 focus:outline-none resize-none"></textarea>
+        </div>
+
+        <!-- Footer -->
+        <div class="pt-3 border-t border-slate-800 flex justify-between items-center">
+          <button type="button" onclick="clearSlotData()" class="text-rose-400 hover:text-rose-300 text-xs">Clear Slot</button>
+          <div class="space-x-2">
+            <button type="button" onclick="closeModal()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded">Cancel</button>
+            <button type="submit" class="px-4 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded">Apply & Save</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    // Application State
+    let currentPedigree = {};
+    let loftDatabase = [];
+    let loftBranding = {
+      name: "ROYAL RACING LOFT",
+      breeder: "Master Breeder",
+      phone: "+1 555 01928",
+      email: "loft@pigeonpedigree.com",
+      location: "Faisalabad / Islamabad, Pakistan",
+      logo: "https://placehold.co/100x100/1e293b/d4af37?text=LOFT+LOGO"
+    };
+
+    // Slot Definitions for 4-Gen Tree
+    const SLOT_KEYS = [
+      'gen0-1',
+      'gen1-1', 'gen1-2',
+      'gen2-1', 'gen2-2', 'gen2-3', 'gen2-4',
+      'gen3-1', 'gen3-2', 'gen3-3', 'gen3-4', 'gen3-5', 'gen3-6', 'gen3-7', 'gen3-8'
+    ];
+
+    // Initialize Page
+    window.onload = function() {
+      loadStorage();
+      if (Object.keys(currentPedigree).length === 0) {
+        loadSamplePedigree();
+      } else {
+        renderPedigreeTree();
+      }
+      renderBrandingHeader();
+      renderDatabaseTable();
+    };
+
+    // Tab Switching Logic
+    function switchTab(tabId) {
+      document.querySelectorAll('main > section').forEach(sec => sec.classList.add('hidden'));
+      document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.className = "nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 transition";
+      });
+
+      const activeBtn = document.getElementById(`nav-${tabId}`);
+      activeBtn.className = "nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20 transition";
+
+      // Update Title
+      const titleMap = {
+        'builder': 'Interactive 4-Gen Pedigree Builder',
+        'database': 'Loft Birds Master Database',
+        'branding': 'Loft Branding & Certificate Settings'
+      };
+      document.getElementById('page-title').innerText = titleMap[tabId];
+    }
+
+    // Render Pedigree Cards
+    function renderPedigreeTree() {
+      SLOT_KEYS.forEach(slotId => {
+        const cardElem = document.getElementById(`card-${slotId}`);
+        if (!cardElem) return;
+
+        const bird = currentPedigree[slotId] || {};
+
+        // Is Sire or Dam
+        const isGen0 = slotId === 'gen0-1';
+        const isSire = slotId.endsWith('-1') || slotId.endsWith('-3') || slotId.endsWith('-5') || slotId.endsWith('-7');
+
+        const borderClass = isGen0 ? 'border-amber-500/80 bg-slate-900' : (isSire ? 'border-blue-500/40 bg-slate-900/90' : 'border-pink-500/40 bg-slate-900/90');
+        const badgeColor = isSire ? 'bg-blue-500/20 text-blue-300' : 'bg-pink-500/20 text-pink-300';
+
+        const photoUrl = bird.photo || `https://placehold.co/80x80/0f172a/${isSire ? '3b82f6' : 'ec4899'}?text=${isSire ? 'SIRE' : 'DAM'}`;
+
+        if (!bird.ring) {
+          // Empty Slot Render
+          cardElem.innerHTML = `
+            <div class="h-full flex flex-col justify-center items-center text-center p-2 border-2 border-dashed border-slate-800 hover:border-slate-600 rounded transition group">
+              <i class="fa-solid fa-circle-plus text-slate-600 group-hover:text-amber-400 text-sm mb-1"></i>
+              <span class="text-[10px] text-slate-500 group-hover:text-slate-300 font-medium">Add ${isSire ? 'Sire' : 'Dam'} Info</span>
+            </div>
+          `;
+          return;
+        }
+
+        // Gen 0 / Gen 1 Detailed View
+        if (slotId.startsWith('gen0') || slotId.startsWith('gen1')) {
+          cardElem.innerHTML = `
+            <div class="flex items-start justify-between gap-2">
+              <div class="flex items-center space-x-2">
+                <img src="${photoUrl}" onerror="this.src='https://placehold.co/80x80/0f172a/cbd5e1?text=PIGEON'" class="w-10 h-10 rounded object-cover border border-slate-700 shrink-0">
+                <div>
+                  <span class="text-[9px] font-bold px-1.5 py-0.5 rounded ${badgeColor} inline-block mb-0.5">${bird.sex || (isSire ? 'Sire' : 'Dam')}</span>
+                  <h4 class="font-bold text-xs md:text-sm text-white leading-tight">${bird.ring}</h4>
+                  <p class="text-[11px] text-amber-300 font-medium">${bird.name || ''}</p>
+                </div>
+              </div>
+            </div>
+            <div class="text-[10px] text-slate-300 space-y-0.5 mt-1 border-t border-slate-800/80 pt-1">
+              <div><span class="text-slate-500">Color:</span> ${bird.color || 'N/A'} | <span class="text-slate-500">Year:</span> ${bird.year || 'N/A'}</div>
+              <div><span class="text-slate-500">Strain:</span> ${bird.strain || 'N/A'}</div>
+              ${bird.performance ? `<p class="text-[9.5px] text-slate-400 line-clamp-2 italic mt-1 leading-snug"><i class="fa-solid fa-trophy text-amber-400/80 text-[8px] mr-1"></i>${bird.performance}</p>` : ''}
+            </div>
+          `;
+        } 
+        // Gen 2 & 3 Compact View
+        else {
+          cardElem.innerHTML = `
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-[10.5px] text-white truncate">${bird.ring}</span>
+              <span class="text-[8px] px-1 rounded ${badgeColor}">${isSire ? 'M' : 'F'}</span>
+            </div>
+            ${bird.name ? `<div class="text-[9.5px] text-amber-300 font-medium truncate">${bird.name}</div>` : ''}
+            <div class="text-[9px] text-slate-400 truncate">${bird.strain || bird.color || ''}</div>
+            ${bird.performance ? `<div class="text-[8.5px] text-slate-500 truncate italic mt-0.5">${bird.performance}</div>` : ''}
+          `;
+        }
+      });
+    }
+
+    // Open Modal for Dynamic Editing
+    function openEditModal(slotId) {
+      document.getElementById('modal-slot-id').value = slotId;
+      const bird = currentPedigree[slotId] || {};
+
+      document.getElementById('modal-title').innerText = `Edit Pedigree Slot: ${slotId.toUpperCase()}`;
+      document.getElementById('modal-ring').value = bird.ring || '';
+      document.getElementById('modal-name').value = bird.name || '';
+      document.getElementById('modal-sex').value = bird.sex || (slotId.endsWith('-1') || slotId.endsWith('-3') || slotId.endsWith('-5') || slotId.endsWith('-7') ? 'Sire' : 'Dam');
+      document.getElementById('modal-year').value = bird.year || '';
+      document.getElementById('modal-color').value = bird.color || '';
+      document.getElementById('modal-strain').value = bird.strain || '';
+      document.getElementById('modal-eye').value = bird.eye || '';
+      document.getElementById('modal-photo').value = bird.photo || '';
+      document.getElementById('modal-performance').value = bird.performance || '';
+
+      // Populate Database Auto-fill Dropdown
+      const select = document.getElementById('db-autofill-select');
+      select.innerHTML = '<option value="">-- Select Saved Bird --</option>';
+      loftDatabase.forEach(b => {
+        select.innerHTML += `<option value="${b.ring}">${b.ring} - ${b.name || 'No Name'}</option>`;
+      });
+
+      document.getElementById('bird-modal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('bird-modal').classList.add('hidden');
+    }
+
+    // Auto-fill from database selection
+    function autoFillFromDB(ringNum) {
+      if (!ringNum) return;
+      const bird = loftDatabase.find(b => b.ring === ringNum);
+      if (bird) {
+        document.getElementById('modal-ring').value = bird.ring || '';
+        document.getElementById('modal-name').value = bird.name || '';
+        document.getElementById('modal-sex').value = bird.sex || 'Sire';
+        document.getElementById('modal-year').value = bird.year || '';
+        document.getElementById('modal-color').value = bird.color || '';
+        document.getElementById('modal-strain').value = bird.strain || '';
+        document.getElementById('modal-eye').value = bird.eye || '';
+        document.getElementById('modal-photo').value = bird.photo || '';
+        document.getElementById('modal-performance').value = bird.performance || '';
+      }
+    }
+
+    // Save Modal Data
+    function saveModalBird(e) {
+      e.preventDefault();
+      const slotId = document.getElementById('modal-slot-id').value;
+
+      const birdData = {
+        ring: document.getElementById('modal-ring').value.trim(),
+        name: document.getElementById('modal-name').value.trim(),
+        sex: document.getElementById('modal-sex').value,
+        year: document.getElementById('modal-year').value,
+        color: document.getElementById('modal-color').value.trim(),
+        strain: document.getElementById('modal-strain').value.trim(),
+        eye: document.getElementById('modal-eye').value.trim(),
+        photo: document.getElementById('modal-photo').value.trim(),
+        performance: document.getElementById('modal-performance').value.trim()
+      };
+
+      currentPedigree[slotId] = birdData;
+      
+      // Sync to DB if not present
+      if (birdData.ring && !loftDatabase.some(b => b.ring === birdData.ring)) {
+        loftDatabase.push(birdData);
+        saveStorage();
+        renderDatabaseTable();
+      }
+
+      saveStorage();
+      renderPedigreeTree();
+      closeModal();
+    }
+
+    function clearSlotData() {
+      const slotId = document.getElementById('modal-slot-id').value;
+      delete currentPedigree[slotId];
+      saveStorage();
+      renderPedigreeTree();
+      closeModal();
+    }
+
+    // Sample Champion Pedigree Loader (Janssen / De Rauw-Sablon)
+    function loadSamplePedigree() {
+      currentPedigree = {
+        'gen0-1': {
+          ring: 'PAK-2025-100201',
+          name: 'GOLDEN ACE CHAMPION',
+          sex: 'Sire',
+          year: '2025',
+          color: 'Blue Chequer',
+          strain: 'De Rauw-Sablon x Janssen',
+          eye: 'Yellow Iris / Pearl',
+          performance: '1st National Ace Pigeon Middle Distance 2026. 1st Prov. Bourges 8,400 birds (520km).'
+        },
+        'gen1-1': {
+          ring: 'BELG-2021-4112390',
+          name: 'SUPER CRACK SABLON',
+          sex: 'Sire',
+          year: '2021',
+          color: 'Dark Cheq',
+          strain: 'De Rauw-Sablon',
+          performance: 'Direct son of Bak 17. Responsible for 12x 1st Prize winners across Europe & Asia.'
+        },
+        'gen1-2': {
+          ring: 'NL-2022-8004121',
+          name: 'JANSSEN QUEEN',
+          sex: 'Dam',
+          year: '2022',
+          color: 'Blue Bar',
+          strain: 'Janssen Bros',
+          performance: '1st Ace Hen Federation 2023. Top breeding dam in loft.'
+        },
+        'gen2-1': { ring: 'BELG-2018-90011', name: 'BAK 17 KING', strain: 'Sablon', performance: 'Foundation Sire' },
+        'gen2-2': { ring: 'BELG-2019-90022', name: 'MISS BOURGES', strain: 'Sablon', performance: '1st Prov. Bourges' },
+        'gen2-3': { ring: 'NL-2018-400112', name: '019 LINE COCK', strain: 'Janssen', performance: 'Pure Arendonk' },
+        'gen2-4': { ring: 'NL-2019-400113', name: 'MERCKX LADY', strain: 'Janssen', performance: 'Dam to 5 Champion Flyers' },
+        'gen3-1': { ring: 'BELG-2015-001', name: 'ALBERT', strain: 'Sablon' },
+        'gen3-2': { ring: 'BELG-2015-002', name: 'PAOLA', strain: 'Sablon' },
+        'gen3-3': { ring: 'BELG-2016-003', name: 'LIMOGES BOY', strain: 'Sablon' },
+        'gen3-4': { ring: 'BELG-2016-004', name: 'CHATEAUROUX HEN', strain: 'Sablon' },
+        'gen3-5': { ring: 'NL-2014-101', name: 'KLAK 019', strain: 'Janssen' },
+        'gen3-6': { ring: 'NL-2014-102', name: 'WONDERDUIF', strain: 'Janssen' },
+        'gen3-7': { ring: 'NL-2015-103', name: 'FIENEKE LADY', strain: 'Janssen' },
+        'gen3-8': { ring: 'NL-2015-104', name: 'OLYMPIADE HEN', strain: 'Janssen' }
+      };
+
+      saveStorage();
+      renderPedigreeTree();
+    }
+
+    function createNewPedigree() {
+      if (confirm('Start a new empty pedigree tree?')) {
+        currentPedigree = {};
+        saveStorage();
+        renderPedigreeTree();
+      }
+    }
+
+    // Loft Database Management
+    function renderDatabaseTable() {
+      const tbody = document.getElementById('db-table-body');
+      const search = (document.getElementById('db-search').value || '').toLowerCase();
+      tbody.innerHTML = '';
+
+      const filtered = loftDatabase.filter(b => 
+        (b.ring && b.ring.toLowerCase().includes(search)) || 
+        (b.name && b.name.toLowerCase().includes(search)) ||
+        (b.strain && b.strain.toLowerCase().includes(search))
+      );
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-slate-500">No birds saved in loft database yet.</td></tr>`;
+        return;
+      }
+
+      filtered.forEach((b, idx) => {
+        tbody.innerHTML += `
+          <tr class="hover:bg-slate-900/60 transition">
+            <td class="p-3 font-bold text-white">${b.ring}</td>
+            <td class="p-3 text-amber-300 font-medium">${b.name || '-'}</td>
+            <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] ${b.sex === 'Sire' ? 'bg-blue-500/20 text-blue-300' : 'bg-pink-500/20 text-pink-300'}">${b.sex || 'Sire'}</span></td>
+            <td class="p-3">${b.year || '-'}</td>
+            <td class="p-3">${b.color || '-'}</td>
+            <td class="p-3">${b.strain || '-'}</td>
+            <td class="p-3 max-w-xs truncate text-slate-400">${b.performance || '-'}</td>
+            <td class="p-3 text-right space-x-2">
+              <button onclick="deleteBirdDB('${b.ring}')" class="text-rose-400 hover:text-rose-300 p-1"><i class="fa-solid fa-trash"></i></button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    function openNewBirdDBModal() {
+      openEditModal('gen0-1');
+    }
+
+    function deleteBirdDB(ringNum) {
+      if (confirm(`Remove bird ${ringNum} from database?`)) {
+        loftDatabase = loftDatabase.filter(b => b.ring !== ringNum);
+        saveStorage();
+        renderDatabaseTable();
+      }
+    }
+
+    function saveCurrentPedigreeToDB() {
+      let added = 0;
+      Object.values(currentPedigree).forEach(bird => {
+        if (bird.ring && !loftDatabase.some(b => b.ring === bird.ring)) {
+          loftDatabase.push(bird);
+          added++;
+        }
+      });
+      saveStorage();
+      renderDatabaseTable();
+      alert(`Saved ${added} new bird(s) from pedigree to Loft Database!`);
+    }
+
+    // Loft Branding Header Configuration
+    function renderBrandingHeader() {
+      document.getElementById('display-loft-name').innerText = loftBranding.name;
+      document.getElementById('display-breeder-name').innerText = `Bred & Owned by: ${loftBranding.breeder}`;
+      document.getElementById('display-loft-contact').innerText = `Phone: ${loftBranding.phone} | Email: ${loftBranding.email} | ${loftBranding.location}`;
+      if (loftBranding.logo) {
+        document.getElementById('display-loft-logo').src = loftBranding.logo;
+      }
+
+      // Populate Form Fields
+      document.getElementById('brand-loft-name').value = loftBranding.name;
+      document.getElementById('brand-breeder-name').value = loftBranding.breeder;
+      document.getElementById('brand-phone').value = loftBranding.phone;
+      document.getElementById('brand-email').value = loftBranding.email;
+      document.getElementById('brand-location').value = loftBranding.location;
+      document.getElementById('brand-logo-url').value = loftBranding.logo;
+    }
+
+    function saveBranding(e) {
+      e.preventDefault();
+      loftBranding = {
+        name: document.getElementById('brand-loft-name').value,
+        breeder: document.getElementById('brand-breeder-name').value,
+        phone: document.getElementById('brand-phone').value,
+        email: document.getElementById('brand-email').value,
+        location: document.getElementById('brand-location').value,
+        logo: document.getElementById('brand-logo-url').value
+      };
+
+      saveStorage();
+      renderBrandingHeader();
+      alert('Loft branding saved successfully!');
+      switchTab('builder');
+    }
+
+    // Local Storage Persistence
+    function saveStorage() {
+      try {
+        localStorage.setItem('pigeon_pedigree_current', JSON.stringify(currentPedigree));
+        localStorage.setItem('pigeon_pedigree_db', JSON.stringify(loftDatabase));
+        localStorage.setItem('pigeon_pedigree_branding', JSON.stringify(loftBranding));
+      } catch (e) {
+        console.error('Storage error', e);
+      }
+    }
+
+    function loadStorage() {
+      try {
+        const ped = localStorage.getItem('pigeon_pedigree_current');
+        const db = localStorage.getItem('pigeon_pedigree_db');
+        const brand = localStorage.getItem('pigeon_pedigree_branding');
+
+        if (ped) currentPedigree = JSON.parse(ped);
+        if (db) loftDatabase = JSON.parse(db);
+        if (brand) loftBranding = JSON.parse(brand);
+      } catch (e) {
+        console.error('Load error', e);
+      }
+    }
+  </script>
+</body>
+</html>
